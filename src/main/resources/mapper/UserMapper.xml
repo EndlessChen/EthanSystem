@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.project.ethansystem.mapper.UserMapper">
+
+    <resultMap id="BaseResultMap" type="com.project.ethansystem.model.domain.User">
+            <id property="userId" column="userId" jdbcType="BIGINT"/>
+            <result property="userAccount" column="userAccount" jdbcType="VARCHAR"/>
+            <result property="userPassword" column="userPassword" jdbcType="VARCHAR"/>
+            <result property="username" column="username" jdbcType="VARCHAR"/>
+            <result property="userSex" column="userSex" jdbcType="TINYINT"/>
+            <result property="userAvatar" column="userAvatar" jdbcType="VARCHAR"/>
+            <result property="userEmail" column="userEmail" jdbcType="VARCHAR"/>
+            <result property="userRole" column="userRole" jdbcType="VARCHAR"/>
+            <result property="userStatus" column="userStatus" jdbcType="TINYINT"/>
+            <result property="inviteCode" column="inviteCode" jdbcType="VARCHAR"/>
+            <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
+            <result property="updateTime" column="updateTime" jdbcType="TIMESTAMP"/>
+            <result property="isDelete" column="isDelete" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        userId,userAccount,userPassword,
+        username,userSex,userAvatar,
+        userEmail,userRole,userStatus,
+        inviteCode,createTime,updateTime,
+        isDelete
+    </sql>
+</mapper>
