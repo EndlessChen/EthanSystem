@@ -1,11 +1,11 @@
 spring:
-#  application:
-#    name: Ethan-System
-#  datasource:
-#    driver-class-name: com.mysql.cj.jdbc.Driver
-#    url: jdbc:mysql://localhost:3306/universe
-#    username: root
-#    password: 20010731
+  application:
+    name: Ethan-System
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/universe
+    username: root
+    password: 20010731
   # session 过期时间
   session:
     timeout: 3600
@@ -20,10 +20,10 @@ spring:
           socketFactory:
             class: javax.net.ssl.SSLSocketFactory
         debug: true
-#server:
-#  port: 8080
-#  servlet:
-#    context-path: /api
+server:
+  port: 8080
+  servlet:
+    context-path: /api
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: false
