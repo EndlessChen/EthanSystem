@@ -1,5 +1,4 @@
 package com.project.ethansystem.controller;
-import java.util.Date;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.project.ethansystem.common.BaseResponse;
@@ -15,6 +14,7 @@ import com.project.ethansystem.utils.ResultUtils;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.DigestUtils;
 import org.springframework.web.bind.annotation.*;
@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.*;
 
 /**
- * 用户处理器
+ * 用户响应处理器
  * @author Ethan
  */
 
@@ -36,6 +36,7 @@ public class UserController {
     @Resource
     private EmailUtils emailUtils;
 
+    // 验证码缓存
     private final Map<String, String> verificationCodeCache = new HashMap<>();
 
     /**
@@ -247,6 +248,8 @@ public class UserController {
         // 如果用户或者用户邮箱不存在，也直接返回
         if (currentUser == null) throw new BusinessException(ErrorCode.NULL_ERROR, "用户不存在");
         if (currentUser.getUserEmail() == null) throw new BusinessException(ErrorCode.NULL_ERROR, "用户没有设置邮箱，请联系管理员设置密码");
+        // 如果用户状态异常，也无法重置密码
+        if (currentUser.getUserStatus().equals(UserConstant.USER_ABNORMAL)) throw new BusinessException(ErrorCode.NULL_ERROR, "用户状态异常，请联系管理员");
         String email = currentUser.getUserEmail(), verificationCode = UUID.randomUUID().toString();
         try {
             emailUtils.sendMail(email, verificationCode);
@@ -299,7 +302,10 @@ public class UserController {
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(User::getUserAccount, userAccount);
         boolean status = userService.update(user, queryWrapper);
-        return ResultUtils.success(status);
+        if (!status) throw new BusinessException(ErrorCode.SYSTEM_ERROR, "数据库更新失败，请重试");
+        // 如果更新成功，那么把验证码从缓存中删除，避免二次使用
+        verificationCodeCache.remove(userAccount);
+        return ResultUtils.success(Boolean.TRUE);
     }
 
     /**

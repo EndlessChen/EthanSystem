@@ -1,6 +1,7 @@
 package com.project.ethansystem.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.project.ethansystem.common.ErrorCode;
 import com.project.ethansystem.constant.UserConstant;
@@ -126,6 +127,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         User targetUser = this.getOne(queryWrapper);
         if (targetUser == null) throw new BusinessException(ErrorCode.NULL_ERROR, "用户不存在");    // 账户不存在
         if (!targetUser.getUserPassword().equals(safetyPassword)) throw new BusinessException(ErrorCode.SYSTEM_ERROR, "密码错误");      // 密码错误
+        // 判断用户状态是否正常，只有状态正常才可以登陆使用
+        if (targetUser.getUserStatus().equals(UserConstant.USER_ABNORMAL)) throw new BusinessException(ErrorCode.NULL_ERROR, "用户状态异常，请联系管理员处理");
         // 数据脱敏
         User safetyUser = getSafetyUser(targetUser);
         // 保存用户登陆状态
@@ -154,13 +157,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             Integer userSex = user.getUserSex();
             String userAvatar = user.getUserAvatar();
             String userEmail = user.getUserEmail();
-            if (StringUtils.isAnyBlank(username, userAvatar, userEmail) || userSex == null || userSex != 0 && userSex != 1)
-                throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数非法");
+            if (userSex != null && userSex != 0 && userSex != 1) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数非法");
             // 判断邮件格式是否正确
-            String validEmailPattern = "\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*";
-            Matcher EmailMatcher = Pattern.compile(validEmailPattern).matcher(userEmail);
-            if (!EmailMatcher.find() || !EmailMatcher.group().equals(userEmail))
-                throw new BusinessException(ErrorCode.PARAMS_ERROR, "邮箱格式有误，请重新输入");
+            if (StringUtils.isNotBlank(userEmail)) {
+                String validEmailPattern = "\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*";
+                Matcher EmailMatcher = Pattern.compile(validEmailPattern).matcher(userEmail);
+                if (!EmailMatcher.find() || !EmailMatcher.group().equals(userEmail))
+                    throw new BusinessException(ErrorCode.PARAMS_ERROR, "邮箱格式有误，请重新输入");
+            }
             // 先从数据库获取数据
             User originalUser = this.getById(user.getUserId());
             if (originalUser == null) throw new BusinessException(ErrorCode.REQUEST_ERROR, "用户不存在");
@@ -173,6 +177,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 String userRole = user.getUserRole();
                 Integer userStatus = user.getUserStatus();
                 if (userStatus == null || StringUtils.isBlank(userRole)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
+                if (originalUser.getUserId().equals(loginUser.getUserId()) && userStatus.equals(UserConstant.USER_ABNORMAL)) {
+                    throw new BusinessException(ErrorCode.SYSTEM_ERROR, "无法设置自己的状态!");
+                }
                 originalUser.setUserRole(userRole);
                 originalUser.setUserStatus(userStatus);
             }

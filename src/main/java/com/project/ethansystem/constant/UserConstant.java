@@ -16,4 +16,10 @@ public interface UserConstant {
 
     // 管理员用户角色
     String ADMIN_ROLE = "admin";
+
+    // 用户状态正常
+    Integer USER_NORMAL = 1;
+
+    // 用户状态异常
+    Integer USER_ABNORMAL = 0;
 }
