@@ -2,8 +2,6 @@
 spring:
   application:
     name: Ethan-System
-  profiles:
-    active:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://rm-bp17d28100kkx687p4o.mysql.rds.aliyuncs.com:3306/universe
