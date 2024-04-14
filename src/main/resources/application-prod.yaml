@@ -4,11 +4,11 @@ spring:
     name: Ethan-System
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/universe
-    username: root
-    password: 20010731
+    url: jdbc:mysql://rm-bp17d28100kkx687p4o.mysql.rds.aliyuncs.com:3306/universe
+    username: EthanSystem_Root
+    password: Czb2768326-
 # 服务器配置
 server:
-  port: 9000
+  port: 8080
   servlet:
     context-path: /api
