@@ -1,6 +1,6 @@
 spring:
   application:
-    name: Ethan-System
+    name: EthanSystem
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/universe
@@ -34,3 +34,23 @@ mybatis-plus:
       logic-delete-value: 1         # 逻辑删除字段，1 表示已删除
       logic-not-delete-value: 0     # 逻辑未删除字段，0 表示未删除
     banner: off
+
+# Knife4j 配置
+# Knife4j UI 访问地址：http://ip:port/{context-path}/doc.html
+# Swagger UI 访问地址：http://ip:port/{context-path}/swagger-ui/index.html
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+  group-configs:
+    - group: 'default'
+      paths-to-match: '/**'
+      packages-to-scan: com.project.ethansystem.controller
+# knife4j 的增强配置，不需要增强可以不配
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn

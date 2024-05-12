@@ -11,7 +11,7 @@ import jakarta.servlet.http.HttpSession;
 * @createDate 2024-03-15 00:17:30
 */
 public interface UserService extends IService<User> {
-    Long userRegister(String userAccount, String password, String verifyPassword, String inviteCode);
+    Long userRegister(String userAccount, String password, String verifyPassword, String userEmail, String inviteCode);
 
     boolean userRegister(User user);
 

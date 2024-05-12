@@ -35,14 +35,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      * @return 返回用户账户 id
      */
     @Override
-    public Long userRegister(String userAccount, String password, String verifyPassword, String inviteCode) {
+    public Long userRegister(String userAccount, String password, String verifyPassword, String userEmail, String inviteCode) {
         // 验证数据是否为空
         if (StringUtils.isAnyBlank(userAccount, password, verifyPassword, inviteCode)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
         // 验证账户是否小于 5 位，密码是否小于 8 位，密码与验证密码是否相等
         if (userAccount.length() < 5 || password.length() < 8 || !password.equals(verifyPassword)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数非法");
         // 判断账号是否有特殊字符
         if (!userAccountVerify(userAccount)) throw new BusinessException(ErrorCode.SYSTEM_ERROR, "用户账户存在特殊字符");
-        // 查看邀请码是否正确 1) 邀请码不可以重复 2) 邀请码长度均为 36 位
+        // 判断邮件是否合法
+        if (StringUtils.isNotBlank(userEmail) && !userEmailVerify(userEmail)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "邮箱格式错误，请重新输入");
+        // todo: 查看邀请码是否正确 1) 邀请码不可以重复 2) 邀请码长度均为 36 位
         // if (inviteCode.length() != 36 ) return -1L;
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(User::getUserAccount, userAccount);
@@ -55,6 +57,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         User finalUser = new User();
         finalUser.setUserAccount(userAccount);
         finalUser.setUserPassword(safetyPassword);
+        finalUser.setUserEmail(userEmail);
+        finalUser.setUsername(userAccount);     // 把用户昵称的默认值改成用户账户，防止前端显示出现问题
         finalUser.setInviteCode(inviteCode);
         boolean saveStatus = this.save(finalUser);
         if (!saveStatus) throw new BusinessException(ErrorCode.SYSTEM_ERROR, "数据库异常，请稍后再试");
@@ -80,6 +84,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (userSex != null && userSex != 0 && userSex != 1) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数非法");
         // 验证账户是否小于 5 位，密码是否小于 8 位，密码与验证密码是否相等
         if (userAccount.length() < 5 || userPassword.length() < 8) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数非法");
+        // 判断邮件是否合法
+        if (StringUtils.isNotBlank(userEmail) && !userEmailVerify(userEmail)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "邮箱格式错误，请重新输入");
         // 判断账号是否有特殊字符
         if (!userAccountVerify(userAccount)) throw new BusinessException(ErrorCode.SYSTEM_ERROR, "用户账户存在特殊字符");
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
@@ -92,7 +98,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         User finalUser = new User();
         finalUser.setUserAccount(userAccount);
         finalUser.setUserPassword(safetyPassword);
-        finalUser.setUsername(username);
+        finalUser.setUsername(StringUtils.isBlank(username) ? userAccount : username);
         finalUser.setUserSex(userSex);
         finalUser.setUserAvatar(userAvatar);
         finalUser.setUserEmail(userEmail);
@@ -159,12 +165,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             String userEmail = user.getUserEmail();
             if (userSex != null && userSex != 0 && userSex != 1) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数非法");
             // 判断邮件格式是否正确
-            if (StringUtils.isNotBlank(userEmail)) {
-                String validEmailPattern = "\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*";
-                Matcher EmailMatcher = Pattern.compile(validEmailPattern).matcher(userEmail);
-                if (!EmailMatcher.find() || !EmailMatcher.group().equals(userEmail))
-                    throw new BusinessException(ErrorCode.PARAMS_ERROR, "邮箱格式有误，请重新输入");
-            }
+            if (StringUtils.isNotBlank(userEmail) && !userEmailVerify(userEmail)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "邮箱格式有误，请重新输入");
             // 先从数据库获取数据
             User originalUser = this.getById(user.getUserId());
             if (originalUser == null) throw new BusinessException(ErrorCode.REQUEST_ERROR, "用户不存在");
@@ -177,8 +178,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 String userRole = user.getUserRole();
                 Integer userStatus = user.getUserStatus();
                 if (userStatus == null || StringUtils.isBlank(userRole)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
-                if (originalUser.getUserId().equals(loginUser.getUserId()) && userStatus.equals(UserConstant.USER_ABNORMAL)) {
-                    throw new BusinessException(ErrorCode.SYSTEM_ERROR, "无法设置自己的状态!");
+                // 管理员不可以修改自己的身份和状态
+                if (originalUser.getUserId().equals(loginUser.getUserId()) && (!userRole.equals(loginUser.getUserRole()) || !userStatus.equals(loginUser.getUserStatus()))) {
+                    throw new BusinessException(ErrorCode.SYSTEM_ERROR, "拒绝修改管理员敏感信息!");
                 }
                 originalUser.setUserRole(userRole);
                 originalUser.setUserStatus(userStatus);
@@ -242,5 +244,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         String validAccountPattern = "[a-zA-Z][a-zA-Z0-9_]{5,}";
         Matcher matcher = Pattern.compile(validAccountPattern).matcher(userAccount);
         return matcher.find() && matcher.group().equals(userAccount);
+    }
+
+    public boolean userEmailVerify(String userEmail) {
+        String validEmailPattern = "\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*";
+        Matcher EmailMatcher = Pattern.compile(validEmailPattern).matcher(userEmail);
+        return EmailMatcher.find() && EmailMatcher.group().equals(userEmail);
     }
 }

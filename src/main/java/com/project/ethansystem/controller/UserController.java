@@ -11,6 +11,7 @@ import com.project.ethansystem.model.domain.response.UserVerifyResponse;
 import com.project.ethansystem.service.UserService;
 import com.project.ethansystem.utils.EmailUtils;
 import com.project.ethansystem.utils.ResultUtils;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -49,10 +50,11 @@ public class UserController {
         if (userRegisterRequest == null) throw new BusinessException(ErrorCode.REQUEST_ERROR, "请求对象为空");
         String userAccount = userRegisterRequest.getUserAccount();;
         String userPassword = userRegisterRequest.getUserPassword();
+        String userEmail = userRegisterRequest.getUserEmail();
         String verifyPassword = userRegisterRequest.getVerifyPassword();
         String inviteCode = userRegisterRequest.getInviteCode();
-        if (StringUtils.isAnyBlank(userAccount, userPassword, verifyPassword, inviteCode)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数不能为空");
-        Long userId = userService.userRegister(userAccount, userPassword, verifyPassword, inviteCode);
+        if (StringUtils.isAnyBlank(userAccount, userPassword, userEmail, verifyPassword, inviteCode)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数不能为空");
+        Long userId = userService.userRegister(userAccount, userPassword, verifyPassword, userEmail, inviteCode);
         return ResultUtils.success(userId);
     }
 
@@ -62,6 +64,7 @@ public class UserController {
      * @param request 原生 Servlet 请求对象
      * @return 布尔值，表示是否成功注册用户
      */
+    @Operation(summary = "userRegisterToAdmin")
     @PostMapping("/admin/register")
     public BaseResponse<Boolean> userRegister(@RequestBody User user, HttpServletRequest request) {
         if (user == null || request == null) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求对象为空");
@@ -126,6 +129,7 @@ public class UserController {
      * @param request 原生 Servlet 请求对象
      * @return 查询到的所有用户对象
      */
+    @Operation(summary = "userSearchForDetail")
     @PostMapping("/detail/search")
     public BaseResponse<List<User>> userSearch(@RequestBody UserSearchRequest user, HttpServletRequest request) {
         if (user == null || request == null) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求对象为空");
@@ -170,6 +174,8 @@ public class UserController {
         if (userId == null) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
         User user = userId.equals(loginUser.getUserId()) ? loginUser : userService.getById(userId);
         if (user == null) throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户不存在");
+        // 不可以删除管理员的账户
+        if (user.getUserRole().equals(UserConstant.ADMIN_ROLE)) throw new BusinessException(ErrorCode.NO_AUTH, "无法删除管理员账户");
         boolean deleteStatus = userService.removeById(user.getUserId());
         return deleteStatus ? ResultUtils.success(Boolean.TRUE) : ResultUtils.error(ErrorCode.SYSTEM_ERROR, "系统内部错误");
     }
@@ -179,6 +185,7 @@ public class UserController {
      * @param request 原生 Servlet 请求对象
      * @return 所有用户对象
      */
+    @Operation(summary = "userSearchForAll")
     @GetMapping("/search/all")
     public BaseResponse<List<User>> userSearch(HttpServletRequest request) {
         if (request == null) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求对象为空");
@@ -295,6 +302,7 @@ public class UserController {
         String userAccount = resetPasswordRequest.getUserAccount();
         String userPassword = resetPasswordRequest.getUserPassword(), verifyPassword = resetPasswordRequest.getVerifyPassword();
         if (StringUtils.isAnyBlank(userAccount, userPassword, verifyPassword)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
+        if (!userPassword.equals(verifyPassword)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "两次密码不一致!");
         // 构造修改密码后的新对象和条件对象
         String safetyPassword = DigestUtils.md5DigestAsHex((UserConstant.SALT + userPassword).getBytes());
         User user = new User();
@@ -302,7 +310,7 @@ public class UserController {
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(User::getUserAccount, userAccount);
         boolean status = userService.update(user, queryWrapper);
-        if (!status) throw new BusinessException(ErrorCode.SYSTEM_ERROR, "数据库更新失败，请重试");
+        if (!status) throw new BusinessException(ErrorCode.SYSTEM_ERROR, "密码更新失败，请重试");
         // 如果更新成功，那么把验证码从缓存中删除，避免二次使用
         verificationCodeCache.remove(userAccount);
         return ResultUtils.success(Boolean.TRUE);

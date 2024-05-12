@@ -1,6 +1,5 @@
 package com.project.ethansystem.common;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import lombok.Data;
 
 import java.io.Serializable;

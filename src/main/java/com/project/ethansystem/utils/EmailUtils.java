@@ -25,8 +25,8 @@ public class EmailUtils {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(username);
         message.setTo(to);
-        message.setSubject("Your Verification Code");
-        message.setText("Your verification code is: " + verificationCode);
+        message.setSubject("Ethan System 验证码");
+        message.setText("您正在尝试重置密码，验证码：" + verificationCode);
         mailSender.send(message);
     }
 }
