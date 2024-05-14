@@ -1,4 +1,4 @@
-package com.project.ethansystem.model.domain;
+package com.project.ethansystem.model.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 

@@ -1,6 +1,11 @@
 spring:
+  # 使用环境
+  profiles:
+    active: prod
+  # 定义项目内容
   application:
     name: EthanSystem
+  # 连接的数据库信息
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/universe
@@ -9,6 +14,7 @@ spring:
   # session 过期时间
   session:
     timeout: 3600
+  # 定义邮箱信息
   mail:
     host: smtp.qq.com
     username: zhibin.chen@qq.com
@@ -20,14 +26,17 @@ spring:
           socketFactory:
             class: javax.net.ssl.SSLSocketFactory
         debug: true
+
 server:
   port: 8080
   servlet:
     context-path: /api
+
+# Mybatis Plus 配置
 mybatis-plus:
   configuration:
-    map-underscore-to-camel-case: false
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: false     # 关闭驼峰式命名
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl   # 当进行了 DML、DQL 操作时，会把日志打印在控制台输出
   global-config:
     db-config:
       logic-delete-field: isDelete  # 数据表中的逻辑删除字段
@@ -48,7 +57,7 @@ springdoc:
   group-configs:
     - group: 'default'
       paths-to-match: '/**'
-      packages-to-scan: com.project.ethansystem.controller
+      packages-to-scan: com.project.ethansystem.controller    # 定义要扫描的包路径，路径下的接口都会显示接口详细信息
 # knife4j 的增强配置，不需要增强可以不配
 knife4j:
   enable: true

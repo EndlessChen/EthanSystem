@@ -1,9 +1,8 @@
 package com.project.ethansystem.service;
 
-import com.project.ethansystem.model.domain.User;
+import com.project.ethansystem.model.entity.User;
 import com.baomidou.mybatisplus.extension.service.IService;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 
 /**
 * @author strivedd

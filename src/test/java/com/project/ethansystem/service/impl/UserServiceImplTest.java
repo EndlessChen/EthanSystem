@@ -1,8 +1,5 @@
 package com.project.ethansystem.service.impl;
 
-import com.project.ethansystem.common.ErrorCode;
-import com.project.ethansystem.exception.BusinessException;
-import com.project.ethansystem.model.domain.User;
 import com.project.ethansystem.service.UserService;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Assertions;

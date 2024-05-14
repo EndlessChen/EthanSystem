@@ -1,13 +1,10 @@
 package com.project.ethansystem;
 
-import com.baomidou.mybatisplus.core.toolkit.Assert;
-import com.project.ethansystem.model.domain.User;
 import com.project.ethansystem.service.UserService;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 

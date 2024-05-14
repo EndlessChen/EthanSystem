@@ -1,9 +1,8 @@
-package com.project.ethansystem.model.domain.request;
+package com.project.ethansystem.model.dto.user;
 
 import lombok.Data;
 
 import java.io.Serializable;
-import java.util.Date;
 
 @Data
 public class UserSearchRequest implements Serializable {

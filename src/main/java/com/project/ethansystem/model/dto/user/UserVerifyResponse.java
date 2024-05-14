@@ -1,4 +1,4 @@
-package com.project.ethansystem.model.domain.response;
+package com.project.ethansystem.model.dto.user;
 
 import lombok.Data;
 

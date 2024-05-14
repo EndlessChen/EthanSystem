@@ -1,12 +1,11 @@
 package com.project.ethansystem.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.project.ethansystem.common.ErrorCode;
 import com.project.ethansystem.constant.UserConstant;
 import com.project.ethansystem.exception.BusinessException;
-import com.project.ethansystem.model.domain.User;
+import com.project.ethansystem.model.entity.User;
 import com.project.ethansystem.service.UserService;
 import com.project.ethansystem.mapper.UserMapper;
 import jakarta.servlet.http.HttpServletRequest;

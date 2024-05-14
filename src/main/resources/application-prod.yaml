@@ -1,14 +1,19 @@
 # 配置数据库
 spring:
-  application:
-    name: Ethan-System
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://rm-bp17d28100kkx687p4o.mysql.rds.aliyuncs.com:3306/universe
     username: EthanSystem_Root
     password: Czb2768326-
+
 # 服务器配置
 server:
   port: 8080
   servlet:
     context-path: /api
+
+knife4j:
+  basic:
+    enable: true
+    username: admin
+    password: EthanChen

@@ -1,6 +1,6 @@
 package com.project.ethansystem.mapper;
 
-import com.project.ethansystem.model.domain.User;
+import com.project.ethansystem.model.entity.User;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 /**
