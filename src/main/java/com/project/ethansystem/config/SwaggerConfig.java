@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Profile;
  */
 
 @Configuration
+@Profile("prod")
 public class SwaggerConfig {
     @Bean
     public OpenAPI customOpenAPI() {

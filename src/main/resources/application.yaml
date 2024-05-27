@@ -1,7 +1,7 @@
 spring:
   # 使用环境
-#  profiles:
-#    active: prod
+  profiles:
+    active: prod
   # 定义项目内容
   application:
     name: EthanSystem
