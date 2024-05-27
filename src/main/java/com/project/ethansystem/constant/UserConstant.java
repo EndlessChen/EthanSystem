@@ -22,4 +22,16 @@ public interface UserConstant {
 
     // 用户状态异常
     Integer USER_ABNORMAL = 0;
+
+    // 邮箱登陆令牌
+    String LOGIN_TOKEN = "_loginToken";
+
+    // 重制密码令牌
+    String RESET_PASSWORD_TOKEN = "_resetPasswordToken";
+
+    // 修改邮箱令牌
+    String RESET_EMAIL_TOKEN = "_resetEmailToken";
+
+    // 用户注册令牌
+    String REGISTER_EMAIL_TOKEN = "_registerEmailToken";
 }

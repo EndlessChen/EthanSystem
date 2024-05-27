@@ -14,5 +14,5 @@ public class UserRegisterRequest implements Serializable {
 
     private String userEmail;
 
-    private String inviteCode;
+    private String verificationCode;
 }

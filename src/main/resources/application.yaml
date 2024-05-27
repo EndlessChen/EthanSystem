@@ -1,7 +1,7 @@
 spring:
   # 使用环境
-  profiles:
-    active: prod
+#  profiles:
+#    active: prod
   # 定义项目内容
   application:
     name: EthanSystem
@@ -11,9 +11,11 @@ spring:
     url: jdbc:mysql://localhost:3306/universe
     username: root
     password: 20010731
-  # session 过期时间
+  # session 配置
   session:
-    timeout: 3600
+    timeout: 3600   # 设置过期时间
+    redis:
+      repository-type: default  # 让 redis 来存储 session 信息(分布式 session 存储)
   # 定义邮箱信息
   mail:
     host: smtp.qq.com
@@ -26,7 +28,15 @@ spring:
           socketFactory:
             class: javax.net.ssl.SSLSocketFactory
         debug: true
+    protocol: smtps
+  # redis 数据库配置，如果需要分布式 session 存储那就开启
+  data:
+    redis:
+      port: 6379
+      host: localhost
+      database: 0
 
+# Tomcat 服务器配置
 server:
   port: 8080
   servlet:

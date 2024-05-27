@@ -9,21 +9,19 @@ import com.project.ethansystem.model.dto.user.*;
 import com.project.ethansystem.model.entity.User;
 import com.project.ethansystem.model.dto.user.UserVerifyResponse;
 import com.project.ethansystem.service.UserService;
-import com.project.ethansystem.utils.EmailUtils;
 import com.project.ethansystem.utils.ResultUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.util.DigestUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 
 /**
  * 用户响应处理器
- * @author Ethan
+ * @author Ethan Chen
  */
 
 @RestController
@@ -32,12 +30,6 @@ import java.util.*;
 public class UserController {
     @Resource
     private UserService userService;
-
-    @Resource
-    private EmailUtils emailUtils;
-
-    // 验证码缓存
-    private final Map<String, String> verificationCodeCache = new HashMap<>();
 
     /**
      * 用户注册接口
@@ -51,9 +43,9 @@ public class UserController {
         String userPassword = userRegisterRequest.getUserPassword();
         String userEmail = userRegisterRequest.getUserEmail();
         String verifyPassword = userRegisterRequest.getVerifyPassword();
-        String inviteCode = userRegisterRequest.getInviteCode();
-        if (StringUtils.isAnyBlank(userAccount, userPassword, userEmail, verifyPassword, inviteCode)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数不能为空");
-        Long userId = userService.userRegister(userAccount, userPassword, verifyPassword, userEmail, inviteCode);
+        String verificationCode = userRegisterRequest.getVerificationCode();
+        if (StringUtils.isAnyBlank(userAccount, userPassword, userEmail, verifyPassword)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数不能为空");
+        Long userId = userService.userRegister(userAccount, userPassword, verifyPassword, userEmail, verificationCode);
         return ResultUtils.success(userId);
     }
 
@@ -99,6 +91,23 @@ public class UserController {
     }
 
     /**
+     * 用户用邮箱登陆接口
+     * @param userLoginRequest 用户登陆 DTO 对象
+     * @return 登陆成功的用户对象
+     */
+    @Operation(summary = "userLoginFromEmail")
+    @PostMapping("/login/email")
+    public BaseResponse<User> userLogin(@RequestBody UserLoginToEmailRequest userLoginRequest, HttpServletRequest request) {
+        if (userLoginRequest == null) throw new BusinessException(ErrorCode.REQUEST_ERROR, "请求对象为空");
+        String userEmail = userLoginRequest.getUserEmail();
+        String verificationCode = userLoginRequest.getVerificationCode();
+        if (!userService.userEmailVerify(userEmail)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户邮箱格式非法");
+        if (StringUtils.isAnyBlank(verificationCode, userEmail)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数不能为空");
+        User user = userService.userLoginFromEmail(userEmail, verificationCode, request);
+        return ResultUtils.success(user);
+    }
+
+    /**
      * 用户搜索接口，一般只用 userId 搜索用户(仅限管理员)
      * @param user 用户查询 DTO 对象
      * @param request 原生 Servlet 请求对象
@@ -113,13 +122,11 @@ public class UserController {
         String username = user.getUsername();
         if (userId == null  && StringUtils.isBlank(username)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数不能全为空");
         if ((userId != null && userId < 0)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数非法");
-        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.like(StringUtils.isNotBlank(username), User::getUsername, username);
-        queryWrapper.eq(userId != null, User::getUserId, userId);
-        User targetUser = userService.getOne(queryWrapper);
-        // 返回脱敏后的用户数据
-        User safetyUser = userService.getSafetyUser(targetUser);
-        return ResultUtils.success(safetyUser);
+        User targetUser = new User();
+        targetUser.setUserId(userId);
+        targetUser.setUsername(username);
+        User finalUser = userService.userSearch(targetUser).get(0);
+        return ResultUtils.success(finalUser);
     }
 
     /**
@@ -142,17 +149,14 @@ public class UserController {
         Integer userStatus = user.getUserStatus();
         if (userId == null && userSex == null && userStatus == null && StringUtils.isAllBlank(username, userEmail, userRole)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数不能全为空");
         if ((userId != null && userId < 0) || (userSex != null && userSex != 0 && userSex != 1) || (userStatus != null && userStatus != 0 && userStatus != 1)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数非法");
-        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(userId != null, User::getUserId, userId);
-        queryWrapper.like(StringUtils.isNotBlank(username), User::getUsername, username);
-        queryWrapper.eq(userSex != null, User::getUserSex, userSex);
-        queryWrapper.eq(userEmail != null, User::getUserEmail, userEmail);
-        queryWrapper.eq(userRole != null, User::getUserRole, userRole);
-        queryWrapper.eq(userStatus != null, User::getUserStatus, userStatus);
-        List<User> targetUsers = userService.getBaseMapper().selectList(queryWrapper);
-        // 返回脱敏后的用户数据
-        List<User> safetyUsers = targetUsers.stream().map((currentUser) -> userService.getSafetyUser(currentUser)).toList();
-        return ResultUtils.success(safetyUsers);
+        User targetUser = new User();
+        targetUser.setUserId(userId);
+        targetUser.setUsername(username);
+        targetUser.setUserSex(userSex);
+        targetUser.setUserEmail(userEmail);
+        targetUser.setUserRole(userRole);
+        targetUser.setUserStatus(userStatus);
+        return ResultUtils.success(userService.userSearch(targetUser));
     }
 
     /**
@@ -190,10 +194,7 @@ public class UserController {
         if (request == null) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求对象为空");
         // 先获取已登陆的用户信息，如果用户未登陆或者不是管理员，那么就停止查询
         if (!userService.isAdmin(request)) throw new BusinessException(ErrorCode.NO_AUTH);
-        List<User> userLists = userService.list();
-        // 返回脱敏后的用户数据
-        userLists = userLists.stream().map(currentUser -> userService.getSafetyUser(currentUser)).toList();
-        return ResultUtils.success(userLists);
+        return ResultUtils.success(userService.userSearch(new User()));
     }
 
     /**
@@ -215,6 +216,7 @@ public class UserController {
      */
     @GetMapping("/current")
     public BaseResponse<User> getCurrentUser(HttpServletRequest request) {
+        if (request == null) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求对象为空");
         Object userObject = request.getSession().getAttribute(UserConstant.LOGIN_STATUS);
         User currentUser = (User) userObject;
         if (currentUser == null) throw new BusinessException(ErrorCode.NO_LOGIN);
@@ -231,10 +233,27 @@ public class UserController {
      * @return 已更新的用户对象
      */
     @PostMapping("/update")
-    public BaseResponse<User> UserUpdate(@RequestBody User user, HttpServletRequest request) {
+    public BaseResponse<User> userUpdate(@RequestBody User user, HttpServletRequest request) {
         if (user == null || request == null) throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户对象为空");
         User safetyUser = userService.userUpdate(user, request);
         return ResultUtils.success(safetyUser);
+    }
+
+    /**
+     * 用户更新邮箱
+     * @param userUpdateEmailRequest 用户更新邮箱所用的 DTO 对象
+     * @param request 原生 Servlet 对象
+     * @return 更新好之后的用户对象
+     */
+    @PostMapping("/update/email")
+    public BaseResponse<User> userUpdateEmail(@RequestBody UserUpdateEmailRequest userUpdateEmailRequest, HttpServletRequest request) {
+        if (userUpdateEmailRequest == null || request == null) throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户对象为空");
+        Long userId = userUpdateEmailRequest.getUserId();
+        String userEmail = userUpdateEmailRequest.getUserEmail();
+        String verificationCode = userUpdateEmailRequest.getVerificationCode();
+        if (StringUtils.isAnyBlank(userEmail, verificationCode) || Objects.isNull(userId)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
+        User updateUser = userService.userUpdateEmail(userUpdateEmailRequest, request);
+        return ResultUtils.success(updateUser);
     }
 
     /**
@@ -253,21 +272,74 @@ public class UserController {
         User currentUser = userService.getOne(queryWrapper);
         // 如果用户或者用户邮箱不存在，也直接返回
         if (currentUser == null) throw new BusinessException(ErrorCode.NULL_ERROR, "用户不存在");
-        if (currentUser.getUserEmail() == null) throw new BusinessException(ErrorCode.NULL_ERROR, "用户没有设置邮箱，请联系管理员设置密码");
+        if (StringUtils.isBlank(currentUser.getUserEmail())) throw new BusinessException(ErrorCode.NULL_ERROR, "用户没有设置邮箱，请联系管理员");
         // 如果用户状态异常，也无法重置密码
         if (currentUser.getUserStatus().equals(UserConstant.USER_ABNORMAL)) throw new BusinessException(ErrorCode.NULL_ERROR, "用户状态异常，请联系管理员");
-        String email = currentUser.getUserEmail(), verificationCode = UUID.randomUUID().toString();
-        try {
-            emailUtils.sendMail(email, verificationCode);
-            verificationCodeCache.put(userAccount, verificationCode);       // 把验证码放入到缓存中，这样后面可以验证用户
-        }
-        catch (Exception exception) {
-            log.error("消息发送失败，原因如下: " + exception.getMessage());
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, exception.getMessage());
-        }
+        // 给用户发送验证码
+        userService.sendEmail(currentUser.getUserEmail(), userAccount + UserConstant.RESET_PASSWORD_TOKEN);
         UserVerifyResponse response = new UserVerifyResponse();
         response.setUserAccount(userAccount);
         return ResultUtils.success(response);
+    }
+
+    /**
+     * 给用邮箱登陆的用户发送验证码
+     * @param userLoginRequest 用户请求对象
+     * @return 通用返回对象
+     */
+    @PostMapping("/send/login/code")
+    public BaseResponse<Boolean> userLoginVerifyCode(@RequestBody UserLoginRequest userLoginRequest) {
+        if (userLoginRequest == null) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求对象为空");
+        String userEmail = userLoginRequest.getUserEmail();
+        if (StringUtils.isBlank(userEmail)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户邮箱不能为空");
+        boolean emailVerifyResult = userService.userEmailVerify(userEmail);
+        if (!emailVerifyResult) throw new BusinessException(ErrorCode.PARAMS_ERROR, "邮箱格式有误, 请重新输入");
+        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(User::getUserEmail, userEmail);
+        User currentUser = userService.getOne(queryWrapper);
+        if (currentUser == null) throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户不存在!");
+        userService.sendEmail(userEmail, currentUser.getUserAccount() + UserConstant.LOGIN_TOKEN);
+        return ResultUtils.success(Boolean.TRUE);
+    }
+
+    /**
+     * 用户修改邮箱时发验证码确认
+     * @param userUpdateEmailRequest DTO 对象
+     * @param request 原生 Servlet 请求
+     * @return 通用对象
+     */
+    @PostMapping("/send/email/code")
+    public BaseResponse<Boolean> userUpdateEmailVerifyCode(@RequestBody UserUpdateEmailRequest userUpdateEmailRequest, HttpServletRequest request) {
+        if (Objects.isNull(userUpdateEmailRequest) || Objects.isNull(request)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求对象为空");
+        Long userId = userUpdateEmailRequest.getUserId();
+        String userEmail = userUpdateEmailRequest.getUserEmail();
+        if (StringUtils.isBlank(userEmail) || Objects.isNull(userId)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数不能为空");
+        // 分别找出「当前需要修改邮箱的用户」和「当前邮箱是 userEmail 的用户」
+        LambdaQueryWrapper<User> wrapperAccount = new LambdaQueryWrapper<>();
+        wrapperAccount.eq(User::getUserId, userId);
+        User currentUser = userService.getOne(wrapperAccount);
+        if (Objects.isNull(currentUser)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "当前用户不存在");
+        LambdaQueryWrapper<User> wrapperEmail = new LambdaQueryWrapper<>();
+        wrapperEmail.eq(User::getUserEmail, userEmail);
+        User sameEmailUser = userService.getOne(wrapperEmail);
+        if (!Objects.isNull(sameEmailUser) && !sameEmailUser.getUserId().equals(currentUser.getUserId()))
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户邮箱已存在!");
+        userService.sendEmail(userEmail, currentUser.getUserAccount() + UserConstant.RESET_EMAIL_TOKEN);
+        return ResultUtils.success(Boolean.TRUE);
+    }
+
+    /**
+     * 给注册的用户发送验证码
+     * @param userRegisterRequest 用户注册的 DTO 对象
+     * @return 验证码是否发生成功
+     */
+    @PostMapping("/send/register/code")
+    public BaseResponse<Boolean> userRegisterVerifyCode(@RequestBody UserRegisterRequest userRegisterRequest) {
+        if (Objects.isNull(userRegisterRequest)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求对象为空");
+        String userEmail = userRegisterRequest.getUserEmail();
+        if (StringUtils.isBlank(userEmail)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户邮箱不能为空");
+        userService.sendEmail(userEmail, userEmail + UserConstant.REGISTER_EMAIL_TOKEN);
+        return ResultUtils.success(Boolean.TRUE);
     }
 
     /**
@@ -281,9 +353,8 @@ public class UserController {
         if (userVerifyRequest == null) throw new BusinessException(ErrorCode.REQUEST_ERROR, "请求对象为空");
         String userAccount = userVerifyRequest.getUserAccount(), verificationCode = userVerifyRequest.getVerificationCode();
         if (StringUtils.isAnyBlank(userAccount, verificationCode)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
-        // 如果验证码输入错误，就直接报错
-        String verificationCodeFromCache = verificationCodeCache.getOrDefault(userAccount, null);
-        if (!verificationCode.equals(verificationCodeFromCache)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "验证码输入错误，请重新输入");
+        // 查看验证码是否正确
+        userService.verifyEmailCode(userAccount + UserConstant.RESET_PASSWORD_TOKEN, verificationCode);
         UserVerifyResponse response = new UserVerifyResponse();
         response.setUserAccount(userAccount);
         return ResultUtils.success(response);
@@ -302,16 +373,8 @@ public class UserController {
         String userPassword = resetPasswordRequest.getUserPassword(), verifyPassword = resetPasswordRequest.getVerifyPassword();
         if (StringUtils.isAnyBlank(userAccount, userPassword, verifyPassword)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
         if (!userPassword.equals(verifyPassword)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "两次密码不一致!");
-        // 构造修改密码后的新对象和条件对象
-        String safetyPassword = DigestUtils.md5DigestAsHex((UserConstant.SALT + userPassword).getBytes());
-        User user = new User();
-        user.setUserPassword(safetyPassword);
-        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(User::getUserAccount, userAccount);
-        boolean status = userService.update(user, queryWrapper);
-        if (!status) throw new BusinessException(ErrorCode.SYSTEM_ERROR, "密码更新失败，请重试");
-        // 如果更新成功，那么把验证码从缓存中删除，避免二次使用
-        verificationCodeCache.remove(userAccount);
+        // 用户重制密码
+        userService.userResetPassword(userAccount, userPassword);
         return ResultUtils.success(Boolean.TRUE);
     }
 
@@ -323,14 +386,7 @@ public class UserController {
     @PostMapping("/exists")
     public BaseResponse<Boolean> userExists(@RequestBody UserRegisterRequest registerRequest) {
         if (registerRequest == null) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求对象为空");
-        String userAccount = registerRequest.getUserAccount();
-        String userPassword = registerRequest.getUserPassword();
-        String verifyPassword = registerRequest.getVerifyPassword();
-        if (StringUtils.isAnyBlank(userAccount, userPassword, verifyPassword)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数非法");
-        if (!userPassword.equals(verifyPassword)) throw new BusinessException(ErrorCode.PARAMS_ERROR, "两次密码输入不一致");
-        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(User::getUserAccount, userAccount);
-        User user = userService.getOne(queryWrapper);
-        return user == null ? ResultUtils.success(Boolean.FALSE) : ResultUtils.success(Boolean.TRUE);
+        boolean exists = userService.userExists(registerRequest);
+        return exists ? ResultUtils.success(Boolean.TRUE) : ResultUtils.success(Boolean.FALSE);
     }
 }

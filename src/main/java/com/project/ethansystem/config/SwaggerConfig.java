@@ -7,8 +7,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
+/**
+ * 接口文档
+ * @author Ethan Chen
+ */
+
 @Configuration
-@Profile("prod")
 public class SwaggerConfig {
     @Bean
     public OpenAPI customOpenAPI() {
